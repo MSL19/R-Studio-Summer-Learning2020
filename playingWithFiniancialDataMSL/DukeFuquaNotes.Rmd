@@ -1,0 +1,38 @@
+Sources: 
+https://www.coursera.org/lecture/financial-risk-management-with-r/calculating-daily-returns-jenBp
+https://www.coursera.org/lecture/financial-risk-management-with-r/calculating-longer-returns-m1ZnI
+```{r}
+library(quantmod)
+wil<-getSymbols("WILL5000IND",src="FRED",auto.assign=FALSE)
+wil<-na.omit(wil)
+wil<-wil["1979-12-31/2017-12-31"]
+names(wil)<-"TR"
+head(wil,3)
+tail(wil,3)
+logreturn <- diff(log(wil$TR))[-1]
+round(head(logreturn, 3),6)
+
+
+```
+daily return : $re$$t_t$$=$$wil_t$$/$$wil_{t-1}$$-1$
+
+
+A discrete return can never have a value less than -1, but it can take on a positive number greater than 1. This mean that the distrubution of discrete returns cannot have a symetric distrobution, so we should transform by taking the log of the data
+
+
+$logre$$t_t$$=log(1+$$ret_t$$)$
+
+To get a n-day return simply add up all the daily returns 
+
+```{r}
+logreturn_w <- apply.weekly(wil,sum) #also works for monthly, quarterly, and yearly
+round(head(logreturn_w,3),6)
+
+mu <- round(mean(logreturn),8)
+sigma <- round(sd(logreturn),8)
+mu 
+sigma
+```
+
+Value at rsik : the ammount that the portfolio might lose, with a given probability (1 - alpha) over a given time period (alpha is usually 0.1, o.05 or 0.01) and the time period is usually one day or one week
+

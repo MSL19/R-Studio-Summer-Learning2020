@@ -34,5 +34,50 @@ mu
 sigma
 ```
 
-Value at rsik : the ammount that the portfolio might lose, with a given probability (1 - alpha) over a given time period (alpha is usually 0.1, o.05 or 0.01) and the time period is usually one day or one week
+Value at risk (VaR): the ammount that the portfolio might lose, with a given probability (1 - alpha) over a given time period (alpha is usually 0.1, o.05 or 0.01) and the time period is usually one day or one week
 
+```{r}
+round(qnorm(0.05,mu,sigma),6)
+```
+The meaning of this number is that over the period of one single day the fund is not likely to loose more than 1.72% of its value at a 95% confidence interval
+
+Expected shortfall (ES): for the same values as VaR, the ES is the expected return given that the return is less than the assoiated VaR; conditional value at risk (CaR), expected tail-loss;
+
+```{r}
+ES<-mu-sigma*dnorm(qnorm(0.05,0,1),0,1)/0.05
+discreteES<-exp(ES)-1 #converting it back to a discrete return, rather than logarithmic
+discreteES
+```
+
+The one day expected loss (ES) at the 95% conidence level is -2.14% if the loss is greater than the VaR
+
+Principal: to estimate the alpha-quantile of a distribution, simulate some data, and then calculate the alpha-quantile of the simulation (this goves the VaR at the (1-alpha) confidence interval)
+
+The mean of the data less the VaR is the ES
+
+```{r}
+alpha<-0.05
+set.seed(123456789)
+rvec<-rnorm(10000,mu,sigma)
+VaR<-quantile(rvec,alpha)
+ES<-mean(rvec[rvec<VaR])
+round(VaR,6)
+round(ES,6)
+plot(density(rvec))
+```
+Now with replacement, where we replace the sampled in the distribution
+This does not assume normality, since we are replacing elements of the data
+When we compare the graphs of the rvec from before and after replacement, we can see that replacement causes the distrobution to look less normal
+
+```{r}
+alpha<-0.05
+set.seed(123456789)
+rvec<-sample(as.vector(logreturn),100000,replace=TRUE)
+VaR<-quantile(rvec,alpha)
+ES<-mean(rvec[rvec<VaR])
+round(VaR,6)
+round(ES,6)
+plot(density(rvec))
+```
+Kurtosis : over or under thickness of the central point
+Coeefecient of skewkness: 0 if symetric greater than 0 if right skewed and less than 0 if left skewed

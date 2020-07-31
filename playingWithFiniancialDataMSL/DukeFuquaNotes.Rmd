@@ -80,4 +80,27 @@ round(ES,6)
 plot(density(rvec))
 ```
 Kurtosis : over or under thickness of the central point
-Coeefecient of skewkness: 0 if symetric greater than 0 if right skewed and less than 0 if left skewed
+Coefecient of skewkness: 0 if symetric greater than 0 if right skewed and less than 0 if left skewed
+Coeffecient of kurtosis: a measure of the heavness or thickness of the tails of a distribution: 3 for normal : les than 3 for thin-tailed: more than 3 for thick-tailed
+
+```{r}
+library(moments)
+rvec <- as.vector(logreturn)
+round(kurtosis(rvec),3) #heavy-tailed
+```
+Many ways to test for normality...one is the Jarque-Bera test
+```{r}
+library(moments)
+rvec<-as.vector(logreturn)
+jarque.test(rvec) #test for normality
+```
+Rejects the hypotheseis that the data is normal
+
+Student-t distribution can be used to describe heavy-tailed distributions
+The pram v of degrees of freedom DoF controls the 
+Student-t always has a mean of 0, coef of skewness 0 as long as v greater than 3
+When v is infinite, the distribution is normal N(0,1)
+REmember that the kurtosis of the Wil5000 was ~22, so (through some online chart) the v or DoF is ~4.3
+BUT, it is unlikely to find a v that matches the sd and kurtosis of the data at the same time
+SOLUTION: add in another coeffecient to help solve the problem
+:divide every outcome by the sd, which in this case is the sqrt(v/(v-2))

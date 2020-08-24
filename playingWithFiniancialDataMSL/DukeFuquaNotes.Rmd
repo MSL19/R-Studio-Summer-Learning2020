@@ -104,3 +104,128 @@ REmember that the kurtosis of the Wil5000 was ~22, so (through some online chart
 BUT, it is unlikely to find a v that matches the sd and kurtosis of the data at the same time
 SOLUTION: add in another coeffecient to help solve the problem
 :divide every outcome by the sd, which in this case is the sqrt(v/(v-2))
+
+this effectivley re-scales the student-t distrobution
+
+So now we have a new model called the rescalled t distrobution model 
+
+
+It has three parameters (mu (mean), sigma (standard deviation aka scaling parameter), nu (dof))
+
+Remember: we are doing this becasue the normal distribution has a hurtosis of 3, which does not match the kurtosis of our data, which is closer to 2, so that now we have three parameters instead of 2
+
+######Estimating the three parameters: 
+We will use MLE (maximum likeleyhood estimation), which is one of the most important methods in statistics. It works off of the idea the you should pick parameters that will give you the highest proability of observing the data. The sample mean is the best estimate of the total mean. Use the MASS package and "fisdist" to do all this stuff...:)
+```{r}
+library(MASS)
+rvec<-as.vector(logreturn)
+t.fit<-fitdistr(rvec, "t")
+round(t.fit$estimate,6)
+```
+
+The high df of ~3 tells us that the distrobution is rather different from the normal distribution
+
+```{r}
+alpha<-0.05
+set.seed(123456789)
+library(metRology)
+rvec<-rt.scaled(100000,mean=t.fit$estimate[1],sd=t.fit$estimate[2],df=t.fit$estimate[3])
+VaR<-quantile(rvec,alpha)
+ES<-mean(rvec[rvec<VaR])
+round(VaR,6)
+round(ES,6)
+```
+
+
+####Time horizons that are longer than 1 day
+
+The first way to do this is to simply re-use the student-t distribution and add up 10 of the one-day log values for VaR and ES
+
+```{r}
+alpha<-0.05
+set.seed(123456789)
+library(metRology)
+rvec<-rep(0,100000)
+for(i in 1:10){
+  rvec<-rvec+rt.scaled(100000,mean=t.fit$estimate[1],sd=t.fit$estimate[2],df=t.fit$estimate[3])
+}
+VaR<-quantile(rvec,alpha)
+ES<-mean(rvec[rvec<VaR])
+VaR
+ES
+```
+Another method (IID simulation) is basicially an extension for the one day returns where you simply extrapolate from the known data
+It is called IID simulation (Independant and Indetically Distributed), we draw randomly form the past data, and the numbers drawn are drawn at random to be completely independant
+```{r}
+alpha<-0.05
+set.seed(123456789)
+rvec<-rep(0,100000)
+for(i in 1:10){
+  rvec<-rvec+sample(as.vector(logreturn),100000,replace=TRUE)
+}
+VaR<-quantile(rvec,alpha)
+ES<-mean(rvec[rvec<VaR])
+VaR
+ES
+```
+
+The third method is called block simulation, and it entails randomly picking a block of 10 consecutive 1-day log returns from the actual data and adding them all up to get a 10 day return. Thusly each of the simulations is independant from the other, but within the simulations, each day is not independant from the others. This method is the most interesting to me.
+This is different from the last method, becasue in the observed data we do not know if there is any time depandance across days, so the last method destroys any dependance between the days. If the data has no time dependance, then the methods B and C should give the same answers!
+```{r}
+alpha<-0.05
+set.seed(123456789)
+rvec<-rep(0,100000)
+rdat<-as.vector(logreturn)
+posn<-seq(from=1, to=length(rdat)-9, by=1)
+rpos<-sample(posn, 100000, replace=TRUE)
+for(i in 1:10){
+  rvec<-rvec+rdat[rpos]
+  rpos<-rpos+1
+}
+VaR<-quantile(rvec,alpha)
+ES<-mean(rvec[rvec<VaR])
+VaR
+ES
+```
+
+Since the last two results are not the same (and have a significant difference), we can concluded that the days returns are slightly dependant 
+
+The two assumptions that we have made so far: one: the future distribution will look similar to the historical distribution. However, there is no way to tell if the future will mirror the past. Two: we are estimateing the parameters of the furure distribution, without considering the ordering of the data. i.e. with the t distribution we used an r function that does not care about the ordering of the parameters. 
+
+Now, lets condider whether the ordering of the parameters actually matters. This assumtion if actually testable:
+
+First test: look for serial correlation. 
+Positive serial correlation: an above average return is followed by another above average return. 
+Negative serial correlation: an above average return is followed by a below-average return. 
+No serial correlation ("random-walk"): an above average return does no increase the likelyhood of another above average return
+
+Testing for serial correlation can be used to test for market effeciency. 
+$x_t$ : the value of a time series on day t
+$p_j = cor($x_t$, $x_{t-j}$)$
+
+```{r}
+acf(logreturn)
+```
+Since most (really all) of the lines are inside the dashed lines, which represent the 95% confidence bands around 0, then there is little to no evidence of serial correlation
+
+
+Second Test: volitility clustering i.e. do high volitility days tend to be followed by low volitility days? THis is known as the phenomenon of volitility clustering.
+
+let $x_t$ denote the value of the time series on day t
+
+$p_{|j|}$ = cor(|$x_t$,|$x_{t-j}$|)
+
+```{r}
+acf(abs(logreturn))
+```
+
+Every autocorrelation coeffecient is positive and outside the 95% confidence intervale: large returns (positive or negative) tend to be followed by similaraly large returns. This means that the ordering of the data is important
+
+Take the absolute value of the log returns data and commute it (aka shuffel it):
+```{r}
+
+```
+After reordering, we can see that the volitilly clustering disapeared. 
+Thusly, the daily retunrs show strong volitility clustering. 
+
+
